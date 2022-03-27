@@ -1,0 +1,128 @@
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+<script type='text/javascript'>
+
+	function preview_image(event) 
+	{
+		 var reader = new FileReader();
+		 reader.onload = function()
+		 {
+			var image = document.getElementById('output_image');
+			var display_image = document.getElementById('display_image');
+			image.src = reader.result;
+			display_image.src = reader.result;
+		 }
+		 reader.readAsDataURL(event.target.files[0]);
+	}
+
+
+	async function main() {
+
+		var image = document.getElementById('output_image');
+		var canvas = document.createElement('canvas');
+		canvas.width = 30;
+		canvas.height = 30;
+
+		var context = canvas.getContext('2d');
+		context.drawImage(image, 0, 0, image.width, image.height, 0, 0, canvas.width, canvas.height);
+
+		var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+		input = []
+
+		for (y = 0; y < 28; y++){
+			for (x = 0; x < 28; x++)
+			{
+				var index = (y*imageData.width + x) * 4;
+				var red = imageData.data[index];
+				var green = imageData.data[index + 1];
+				var blue = imageData.data[index + 2];
+				var alpha = imageData.data[index + 3];
+
+				input.push(red);
+			}
+		}
+
+
+        try {
+            const session = await ort.InferenceSession.create('./mnist.onnx', {executionProviders: ['webgl']});
+
+            // prepare inputs. a tensor need its corresponding TypedArray as data
+
+            const tensor = new ort.Tensor('float32', input, [1, 1, 28, 28]);
+
+            // prepare feeds. use model input names as keys.
+            const feeds = { Input3: tensor };
+
+            // feed inputs and run
+            const results = await session.run(feeds);
+
+            // read from results
+            result = [];
+            result.push(results['Plus214_Output_0']['data'][0])
+            result.push(results['Plus214_Output_0']['data'][1])
+            result.push(results['Plus214_Output_0']['data'][2])
+            result.push(results['Plus214_Output_0']['data'][3])
+            result.push(results['Plus214_Output_0']['data'][4])
+            result.push(results['Plus214_Output_0']['data'][5])
+            result.push(results['Plus214_Output_0']['data'][6])
+            result.push(results['Plus214_Output_0']['data'][7])
+            result.push(results['Plus214_Output_0']['data'][8])
+            result.push(results['Plus214_Output_0']['data'][9])
+
+            const C = Math.max(...result);
+            console.log(result);
+            const d = result.map((y) => Math.exp(y - C)).reduce((a, b) => a + b);
+
+            const answer = result.map((value, index) => {
+			    return Math.exp(value - C) / d;
+			  });
+
+            const textContentOutput = document.getElementById("textContentOutput");
+
+            output = "";
+
+            for (var i = 0; i < 10;i++)
+            {
+            	output = output + i + ":" + answer[i];
+            	output = output + "\n";
+            }
+
+            textContentOutput.value = output;
+
+        } catch (e) {
+            document.write(`failed to inference ONNX model: ${e}.`);
+        }
+        
+    }
+</script>
+<style>
+	body{
+	 width:100%;
+	 margin:0 auto;
+	 padding:0px;
+	 font-family:helvetica;
+	}
+	#wrapper{
+	 text-align:center;
+	 margin:50px;
+	 width:100%;
+	}
+	#display_image{
+		margin-top: 50px;
+	}
+
+</style>
+</head>
+	<body>
+		<div id="wrapper">
+		 <input type="file" accept="image/*" onchange="preview_image(event)">
+		 <input type="button" name="predict" value="Predict" onclick="main()" /><br/>
+		 <img id="output_image" style="width:28px;height: 28px; display: none;"/>
+		 <img id="display_image" /><br/>
+		 <h3>Result of textContent:</h3>
+		 <textarea id="textContentOutput" rows="15" cols="30" readonly>...</textarea>
+		</div>
+	</body>
+</html>
