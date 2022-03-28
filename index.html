@@ -16,6 +16,16 @@
 		 reader.readAsDataURL(event.target.files[0]);
 	}
 
+	function getPredictedClass(output) {
+	    if (output.reduce((a, b) => a + b, 0) === 0) {
+	      return -1;
+	    }
+	    return output.reduce(
+	      (argmax, n, i) => (n > output[argmax] ? i : argmax),
+	      0
+	    );
+	}
+
 
 	async function main() {
 
@@ -91,6 +101,10 @@
 
             textContentOutput.value = output;
 
+            const output_result = document.getElementById("output");
+            output_result.innerHTML = ""+getPredictedClass(answer);
+
+
         } catch (e) {
             document.write(`failed to inference ONNX model: ${e}.`);
         }
@@ -120,7 +134,8 @@
 		 <input type="file" accept="image/*" onchange="preview_image(event)">
 		 <input type="button" name="predict" value="Predict" onclick="main()" /><br/>
 		 <img id="output_image" style="width:28px;height: 28px; display: none;"/>
-		 <img id="display_image" /><br/>
+		 <img id="display_image" />
+		 <p id="output" style="font-size: 30px;">Result</p><br/>
 		 <h3>Result of textContent:</h3>
 		 <textarea id="textContentOutput" rows="15" cols="30" readonly>...</textarea>
 		</div>
